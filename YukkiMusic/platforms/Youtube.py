@@ -63,7 +63,6 @@ class YouTube:
         else:
             return False
 
-    @asyncify
     def url(self, message_1: Message) -> Union[str, None]:
         messages = [message_1]
         if message_1.reply_to_message:
@@ -205,7 +204,6 @@ class YouTube:
         except Exception:
             return await self._track(link)
 
-    @asyncify
     def _track(self, q):
         options = {
             "format": "best",
@@ -230,7 +228,6 @@ class YouTube:
             }
             return info, details["id"]
 
-    @asyncify
     def formats(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
             link = self.base + link
@@ -309,7 +306,6 @@ class YouTube:
             match = re.search(pattern, link)
             vidid = match.group(1)
 
-        @asyncify
         def audio_dl():
             ydl_optssx = {
                 "format": "bestaudio/best",
@@ -331,7 +327,6 @@ class YouTube:
             x.download([link])
             return xyz
 
-        @asyncify
         def video_dl():
             ydl_optssx = {
                 "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
@@ -353,7 +348,6 @@ class YouTube:
             x.download([link])
             return xyz
 
-        @asyncify
         def song_video_dl():
             formats = f"{format_id}+140"
             fpath = f"downloads/{title}"
@@ -375,7 +369,6 @@ class YouTube:
             file_path = x.prepare_filename(info)
             return file_path
 
-        @asyncify
         def song_audio_dl():
             fpath = f"downloads/{title}.%(ext)s"
             ydl_optssx = {
@@ -402,7 +395,6 @@ class YouTube:
             file_path = x.prepare_filename(info)
             return file_path
 
-        @asyncify
         def download_with_api():
             ydl_optssx = {
                 "outtmpl": "downloads/%(id)s.%(ext)s",
