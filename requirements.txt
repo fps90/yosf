@@ -16,7 +16,7 @@ hachoir
 httpx[http2]
 heroku3
 img2pdf
-lyricsgenius
+lyricsgenius==3.0.1
 lexica-api
 MukeshAPI
 motor
