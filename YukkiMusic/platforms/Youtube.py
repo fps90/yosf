@@ -13,17 +13,143 @@ import os
 import random
 import re
 from typing import Union
-
+from httpx import Client
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 from youtubesearchpython.__future__ import VideosSearch
 from yt_dlp import YoutubeDL
-
+from json import dumps
 import config
 from YukkiMusic.utils.database import is_on_off
 from YukkiMusic.utils.formatters import time_to_seconds
+from requests import get,post
+import requests
+from bs4 import BeautifulSoup
+import json
+import re
 
+def extract_quality(textes):
+  los = []
+  for text in textes:
+    match = re.search(r'(\d{3,4})p', text['resolution'])
+    if match:
+      los.append(int(match.group(1)))
+  return sorted(los)
+# الرؤوس
 
+def get_res(video_id):
+    
+    headers = {
+    'accept': 'application/json, text/javascript, */*; q=0.01',
+    'accept-language': 'ar,en-GB;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6,en-US;q=0.5',
+    'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'origin': 'https://yt1d.com',
+    'priority': 'u=1, i',
+    'referer': 'https://yt1d.com/en11/',
+    'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'x-requested-with': 'XMLHttpRequest',
+    }  
+      
+    # البيانات
+    data = {
+        'url': f'https://youtu.be/watch?v={video_id}',
+        'ajax': '1',
+        'lang': 'en',
+    }
+
+    # الطلب
+
+    response = requests.post('https://yt1d.com/mates/en/analyze/ajax', headers=headers, data=data)
+
+    # تحليل الرد JSON
+    response_json = response.json()
+    html_content = response_json.get('result', '')
+    # print(html_content)
+
+    # استخدام BeautifulSoup لتحليل الكود HTML المستخرج
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # البحث عن الأزرار باستخدام الصنف المحدد
+    tables = soup.find('table', class_='table table-bordered table-hover table-responsive-sm')
+    # print(tables.td)
+
+    # استخراج قيم onclick وتحويلها إلى قاموس باستخدام التعبيرات العادية
+    downloads = []
+    
+    resolutions = set()  # استخدام مجموعة للتأكد من الفريدات
+    
+    if tables:
+        td_elements = tables.find_all('td')
+        for td in td_elements:
+            text = td.get_text(strip=True)
+            if 'p60' in text or '360p' in text or '(.mp4)' in text:
+                resolutions.add(text)
+    
+    # تحويل المجموعة إلى قائمة مع عرض النتائج
+    data = [{'resolution': res} for res in resolutions]
+    
+    return data
+
+def send_request(video_id,res):
+    
+    headers = {
+        'accept': 'application/json, text/javascript, */*; q=0.01',
+        'accept-language': 'ar,en-GB;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6,en-US;q=0.5',
+        'origin': 'https://loader.to',
+        'priority': 'u=1, i',
+        'referer': 'https://loader.to/',
+        'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'cross-site',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    }
+
+    params = {
+        'start': '1',
+        'end': '1',
+        'format': res,
+        'url': f'https://www.youtube.com/watch?v={video_id}',
+    }
+
+    response = requests.get('https://ab.cococococ.com/ajax/download.php', params=params, headers=headers)
+    return response.json()
+
+def get_progress(id):
+
+    headers = {
+        'accept': 'application/json, text/javascript, */*; q=0.01',
+        'accept-language': 'ar,en-GB;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6,en-US;q=0.5',
+        'origin': 'https://loader.to',
+        'priority': 'u=1, i',
+        'referer': 'https://loader.to/',
+        'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'cross-site',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    }
+
+    params = {
+        'id': id,
+    }
+
+    response = requests.get('https://p.oceansaver.in/ajax/progress.php', params=params, headers=headers)
+    return response.json()
+def get_bytes(url):
+    bytees = requests.get(url).content
+    return bytees
+    
 def cookies():
     folder_path = f"{os.getcwd()}/YukkiMusic/utils/cookies"
     txt_files = glob.glob(os.path.join(folder_path, "*.txt"))
@@ -286,42 +412,19 @@ class YouTubeAPI:
         loop = asyncio.get_running_loop()
 
         def audio_dl():
-            ydl_optssx = {
-                "format": "bestaudio/best",
-                "outtmpl": "downloads/%(id)s.%(ext)s",
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-            }
-            ydl_optssx = get_ytdl_options(ydl_optssx, False)
-
-            x = YoutubeDL(ydl_optssx)
-            info = x.extract_info(link, False)
-            xyz = os.path.join("downloads", f"{info['id']}.{info['ext']}")
-            if os.path.exists(xyz):
-                return xyz
-            x.download([link])
-            return xyz
-
-        def video_dl():
-            ydl_optssx = {
-                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
-                "outtmpl": "downloads/%(id)s.%(ext)s",
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-            }
-            ydl_optssx = get_ytdl_options(ydl_optssx, False)
-
-            x = YoutubeDL(ydl_optssx)
-            info = x.extract_info(link, False)
-            xyz = os.path.join("downloads", f"{info['id']}.{info['ext']}")
-            if os.path.exists(xyz):
-                return xyz
-            x.download([link])
-            return xyz
+            
+            Id = send_request(link.split('v=')[1],"mp3")['id']
+            
+            while True:
+                progress = get_progress(Id)
+                print(progress)
+                if progress['text'] == 'Finished': 
+                    Do = get(progress['download_url'],)
+                    print(Do)
+                    break
+            with open(f"downloads/{Id}.mp3",'wb') as D:
+                D.write(Do.content)
+            return  f"downloads/{Id}.mp3"
 
         def song_video_dl():
             formats = f"{format_id}+140"
@@ -342,28 +445,20 @@ class YouTubeAPI:
             x.download([link])
 
         def song_audio_dl():
-            fpath = f"downloads/{title}.%(ext)s"
-            ydl_optssx = {
-                "format": format_id,
-                "outtmpl": fpath,
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-                "prefer_ffmpeg": True,
-                "postprocessors": [
-                    {
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": "192",
-                    }
-                ],
-            }
-            ydl_optssx = get_ytdl_options(ydl_optssx, False)
-
-            x = YoutubeDL(ydl_optssx)
-            x.download([link])
-
+            
+            Id = send_request(link.split('v=')[1],"mp3")['id']
+            
+            while True:
+                progress = get_progress(Id)
+                #print(progress)
+                if progress['text'] == 'Finished': 
+                    Do = get(progress['download_url'],)
+                    print(Do)
+                    break
+            with open(f"downloads/{Id}.mp3",'wb') as D:
+                D.write(Do.content)
+            
+            
         if songvideo:
             await loop.run_in_executor(None, song_video_dl)
             fpath = f"downloads/{title}.mp4"
