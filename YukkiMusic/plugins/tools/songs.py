@@ -50,9 +50,10 @@ async def song(client, message):
     m = await message.reply("⦗ جارٍ البحث ... ⦘")
     
     ydl_opts = {
-        "format": "bestaudio[ext=m4a]",
-        "cookiefile": get_cookies_file()
-    }
+    "format": "bestaudio[ext=m4a]",
+    "cookiefile": get_cookies_file(),
+    "extractor-args": "youtubetab:skip=authcheck"
+}
 
     if "youtube.com" in query or "youtu.be" in query:
         link = query
